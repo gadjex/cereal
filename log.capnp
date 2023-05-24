@@ -3,6 +3,7 @@ $Cxx.namespace("cereal");
 
 using Car = import "car.capnp";
 using Legacy = import "legacy.capnp";
+using Custom = import "custom.capnp";
 
 @0xf3b1f17e25a4285b;
 
@@ -46,6 +47,7 @@ struct InitData {
     chffrIos @3;
     tici @4;
     pc @5;
+    tizi @6;
   }
 
   struct PandaInfo {
@@ -139,16 +141,6 @@ struct FrameData {
   targetGreyFraction @22 :Float32;
   exposureValPercent @27 :Float32;
 
-  # Focus
-  lensPos @11 :Int32;
-  lensSag @12 :Float32;
-  lensErr @13 :Float32;
-  lensTruePos @14 :Float32;
-  focusVal @16 :List(Int16);
-  focusConf @17 :List(UInt8);
-  sharpnessScore @18 :List(UInt16);
-  recoverState @19 :Int32;
-
   transform @10 :List(Float32);
 
   image @6 :Data;
@@ -171,6 +163,14 @@ struct FrameData {
 
   globalGainDEPRECATED @5 :Int32;
   androidCaptureResultDEPRECATED @9 :AndroidCaptureResult;
+  lensPosDEPRECATED @11 :Int32;
+  lensSagDEPRECATED @12 :Float32;
+  lensErrDEPRECATED @13 :Float32;
+  lensTruePosDEPRECATED @14 :Float32;
+  focusValDEPRECATED @16 :List(Int16);
+  focusConfDEPRECATED @17 :List(UInt8);
+  sharpnessScoreDEPRECATED @18 :List(UInt16);
+  recoverStateDEPRECATED @19 :Int32;
   struct AndroidCaptureResult {
     sensitivity @0 :Int32;
     frameDuration @1 :Int64;
@@ -409,10 +409,16 @@ struct PandaState @0xa7649e2575e4591e {
   powerSaveEnabled @16 :Bool;
   uptime @17 :UInt32;
   faults @18 :List(FaultType);
-  harnessStatus @21 :HarnessStatus;
   heartbeatLost @22 :Bool;
   interruptLoad @25 :Float32;
   fanPower @28 :UInt8;
+  fanStallCount @34 :UInt8;
+
+  spiChecksumErrorCount @33 :UInt16;
+
+  harnessStatus @21 :HarnessStatus;
+  sbu1Voltage @35 :Float32;
+  sbu2Voltage @36 :Float32;
 
   # can health
   canState0 @29 :PandaCanState;
@@ -427,6 +433,9 @@ struct PandaState @0xa7649e2575e4591e {
   safetyParam @27 :UInt16;
   alternativeExperience @23 :Int16;
   safetyRxChecksInvalid @32 :Bool;
+
+  voltage @0 :UInt32;
+  current @1 :UInt32;
 
   enum FaultStatus {
     none @0;
@@ -460,6 +469,8 @@ struct PandaState @0xa7649e2575e4591e {
     interruptRateExti @22;
     interruptRateSpi @23;
     interruptRateUart7 @24;
+    sirenMalfunction @25;
+    heartbeatLoopWatchdog @26;
     # Update max fault type in boardd when adding faults
   }
 
@@ -481,15 +492,6 @@ struct PandaState @0xa7649e2575e4591e {
     normal @1;
     flipped @2;
   }
-
-  startedSignalDetectedDEPRECATED @5 :Bool;
-  voltageDEPRECATED @0 :UInt32;
-  currentDEPRECATED @1 :UInt32;
-  hasGpsDEPRECATED @6 :Bool;
-  fanSpeedRpmDEPRECATED @11 :UInt16;
-  usbPowerModeDEPRECATED @12 :PeripheralState.UsbPowerModeDEPRECATED;
-  safetyParamDEPRECATED @20 :Int16;
-  safetyParam2DEPRECATED @26 :UInt32;
 
   struct PandaCanState {
     busOff @0 :Bool;
@@ -525,6 +527,13 @@ struct PandaState @0xa7649e2575e4591e {
       noChange @7;
     }
   }
+
+  startedSignalDetectedDEPRECATED @5 :Bool;
+  hasGpsDEPRECATED @6 :Bool;
+  fanSpeedRpmDEPRECATED @11 :UInt16;
+  usbPowerModeDEPRECATED @12 :PeripheralState.UsbPowerModeDEPRECATED;
+  safetyParamDEPRECATED @20 :Int16;
+  safetyParam2DEPRECATED @26 :UInt32;
 }
 
 struct PeripheralState {
@@ -581,7 +590,7 @@ struct RadarState @0x9a185389d6fdd05f {
 }
 
 struct LiveCalibrationData {
-  calStatus @1 :Int8;
+  calStatus @11 :Status;
   calCycle @2 :Int32;
   calPerc @3 :Int8;
   validBlocks @9 :Int32;
@@ -595,8 +604,16 @@ struct LiveCalibrationData {
   wideFromDeviceEuler @10 :List(Float32);
 
   warpMatrixDEPRECATED @0 :List(Float32);
+  calStatusDEPRECATED @1 :Int8;
   warpMatrix2DEPRECATED @5 :List(Float32);
   warpMatrixBigDEPRECATED @6 :List(Float32);
+  
+  enum Status {
+    uncalibrated @0;
+    calibrated @1;
+    invalid @2;
+    recalibrating @3;
+  }
 }
 
 struct LiveTracks {
@@ -998,6 +1015,7 @@ struct LongitudinalPlan @0xe00b5b3eba12876c {
   }
 }
 struct UiPlan {
+  frameId @2 :UInt32;
   position @0 :XYZTData;
   accel @1 :List(Float32);
 }
@@ -1106,6 +1124,7 @@ struct LiveLocationKalman {
   deviceStable @22 :Bool = true;
   timeSinceReset @23 :Float64;
   excessiveResets @24 :Bool;
+  timeToFirstFix @25 :Float32;
 
   enum Status {
     uninitialized @0;
@@ -1178,12 +1197,21 @@ struct GnssMeasurements {
   gpsTimeOfWeek @2 :Float64;
 
   correctedMeasurements @3 :List(CorrectedMeasurement);
+  ephemerisStatuses @9 :List(EphemerisStatus);
 
   kalmanPositionECEF @4 :LiveLocationKalman.Measurement;
   kalmanVelocityECEF @5 :LiveLocationKalman.Measurement;
   positionECEF @6 :LiveLocationKalman.Measurement;
   velocityECEF @7 :LiveLocationKalman.Measurement;
+  timeToFirstFix @8 :Float32;
   # Todo sync this with timing pulse of ublox
+
+  struct EphemerisStatus {
+    constellationId @0 :ConstellationId;
+    svId @1 :UInt8;
+    type @2 :EphemerisType;
+    source @3 :EphemerisSource;
+  }
 
   struct CorrectedMeasurement {
     constellationId @0 :ConstellationId;
@@ -1197,11 +1225,11 @@ struct GnssMeasurements {
     # Satellite position and velocity [x,y,z]
     satPos @7 :List(Float64);
     satVel @8 :List(Float64);
-    ephemerisSource @9 :EphemerisSource;
+    ephemerisSourceDEPRECATED @9 :EphemerisSourceDEPRECATED;
   }
 
-  struct EphemerisSource {
-    type @0 :EphemerisSourceType;
+  struct EphemerisSourceDEPRECATED {
+    type @0 :EphemerisType;
     # first epoch in file:
     gpsWeek @1 :Int16; # -1 if Nav
     gpsTimeOfWeek @2 :Int32; # -1 if Nav. Integer for seconds is good enough for logs.
@@ -1218,12 +1246,19 @@ struct GnssMeasurements {
     glonass @6;
   }
 
-  enum EphemerisSourceType {
+  enum EphemerisType {
     nav @0;
     # Different ultra-rapid files:
     nasaUltraRapid @1;
     glonassIacUltraRapid @2;
     qcom @3;
+  }
+
+  enum EphemerisSource {
+    gnssChip @0;
+    internet @1;
+    cache @2;
+    unknown @3;
   }
 }
 
@@ -1235,6 +1270,19 @@ struct UbloxGnss {
     hwStatus @3 :HwStatus;
     hwStatus2 @4 :HwStatus2;
     glonassEphemeris @5 :GlonassEphemeris;
+    satReport @6 :SatReport;
+  }
+
+  struct SatReport {
+    #received time of week in gps time in seconds and gps week
+    iTow @0 :UInt32;
+    svs @1 :List(SatInfo);
+
+    struct SatInfo {
+      svId @0 :UInt8;
+      gnssId @1 :UInt8;
+      flagsBitfield @2 :UInt32;
+    }
   }
 
   struct MeasurementReport {
@@ -1328,7 +1376,7 @@ struct UbloxGnss {
 
     iDot @26 :Float64;
     codesL2 @27 :Float64;
-    gpsWeek @28 :Float64;
+    gpsWeekDEPRECATED @28 :Float64;
     l2 @29 :Float64;
 
     svAcc @30 :Float64;
@@ -1346,6 +1394,8 @@ struct UbloxGnss {
     ionoBeta @39 :List(Float64);
 
     towCount @40 :UInt32;
+    toeWeek @41 :UInt16;
+    tocWeek @42 :UInt16;
   }
 
   struct IonoData {
@@ -1424,7 +1474,7 @@ struct UbloxGnss {
     age @17 :UInt8;
 
     svHealth @18 :UInt8;
-    tk @19 :UInt16;
+    tkDEPRECATED @19 :UInt16;
     tb @20 :UInt16;
 
     tauN @21 :Float64;
@@ -1436,7 +1486,12 @@ struct UbloxGnss {
     p3 @26 :UInt8;
     p4 @27 :UInt8;
 
-    freqNum @28 :UInt32;
+    freqNumDEPRECATED @28 :UInt32;
+
+    n4 @29 :UInt8;
+    nt @30 :UInt16;
+    freqNum @31 :Int16;
+    tkSeconds @32 :UInt32;
   }
 }
 
@@ -1870,7 +1925,6 @@ struct LiveParametersData {
   stiffnessFactor @4 :Float32;
   steerRatio @5 :Float32;
   sensorValid @6 :Bool;
-  yawRate @7 :Float32;
   posenetSpeed @8 :Float32;
   posenetValid @9 :Bool;
   angleOffsetFastStd @10 :Float32;
@@ -1878,6 +1932,8 @@ struct LiveParametersData {
   stiffnessFactorStd @12 :Float32;
   steerRatioStd @13 :Float32;
   roll @14 :Float32;
+
+  yawRateDEPRECATED @7 :Float32;
 }
 
 struct LiveTorqueParametersData {
@@ -2144,6 +2200,18 @@ struct Event {
     driverEncodeData @87 :EncodeData;
     wideRoadEncodeData @88 :EncodeData;
     qRoadEncodeData @89 :EncodeData;
+
+    # *********** Custom: reserved for forks ***********
+    customReserved0 @107 :Custom.CustomReserved0;
+    customReserved1 @108 :Custom.CustomReserved1;
+    customReserved2 @109 :Custom.CustomReserved2;
+    customReserved3 @110 :Custom.CustomReserved3;
+    customReserved4 @111 :Custom.CustomReserved4;
+    customReserved5 @112 :Custom.CustomReserved5;
+    customReserved6 @113 :Custom.CustomReserved6;
+    customReserved7 @114 :Custom.CustomReserved7;
+    customReserved8 @115 :Custom.CustomReserved8;
+    customReserved9 @116 :Custom.CustomReserved9;
 
     # *********** legacy + deprecated ***********
     model @9 :Legacy.ModelData; # TODO: rename modelV2 and mark this as deprecated
